@@ -11,7 +11,8 @@
     "install-deps": "nmp install",
     "setup": "npm install",
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "db:setup": "node database/setup.js"
   },
   "repository": {
     "type": "git",
