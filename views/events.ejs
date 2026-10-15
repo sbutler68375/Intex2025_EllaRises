@@ -1,3 +1,9 @@
+<!-- Group 2-11
+ 
+Events page: page that shows a list of the different events available and related information.
+
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,61 +13,173 @@
 </head>
 
 <body>
-
-    <h1 style="text-align:center;">Event Management</h1>
+    <%- include('partials/header') %>
 
     <% 
-        // FIX: Using participant_role to match the server-side variable name
-        // UPDATE: Change check from 'manager' to 'admin'
-        let isManager = (participant_role === 'admin' || participant_role === 'Admin' || participant_role === 'A');
+        // Determine if user is an admin
+        let isManager = (role === 'admin' || role === 'Admin');
     %>
 
-    <% if (isManager) { %>
-        <a href="/events/add" class="btn btn-add">Add Event</a>
-    <% } %>
-
-    <table class="event-list">
-        <thead>
-            <tr>
-                <th>Event Name</th>
-                <th>Type</th>
-                <th>Description</th>
-                <th>Default Capacity</th>
-                <th>Recurrence</th>
-
-                <% if (isManager) { %>
-                    <th>Actions</th>
-                <% } %>
-            </tr>
-        </thead>
-
-        <tbody>
-            <% if (events && events.length > 0) { %>
-                <% events.forEach(event => { %>
-                    <tr>
-                        <td><%= event.eventname %></td>
-                        <td><%= event.eventtype %></td>
-                        <td><%= event.eventdescription %></td>
-                        <td><%= event.eventdefaultcapacity %></td>
-                        <td><%= event.eventrecurrencepattern %></td>
-
-                        <% if (isManager) { %>
-                            <td class="actions">
-                                <a href="/events/edit/<%= event.eventid %>" class="btn btn-edit">Edit</a>
-                                <a href="/events/delete/<%= event.eventid %>" class="btn btn-delete">Delete</a>
-                            </td>
-                        <% } %>
-                    </tr>
-                <% }) %>
-            <% } else { %>
-                <tr>
-                    <td colspan="<%= isManager ? 6 : 5 %>" style="text-align:center; padding:20px;">
-                        No events available.
-                    </td>
-                </tr>
+    <div class="table-card">
+        <div class="table-header-row">
+            <div>
+                <h1>Event Management</h1>
+            </div>
+            <% if (pagination && pagination.totalPages > 1) { %>
+                <div class="pagination-top">
+                    <div class="pagination">
+                        <a class="page-link <%= pagination.page === 1 ? 'disabled' : '' %>"
+                           href="?page=<%= pagination.page - 1 %>">Previous</a>
+                        <span class="page-info">Page <%= pagination.page %> of <%= pagination.totalPages %></span>
+                        <a class="page-link <%= pagination.page >= pagination.totalPages ? 'disabled' : '' %>"
+                           href="?page=<%= pagination.page + 1 %>">Next</a>
+                    </div>
+                </div>
             <% } %>
-        </tbody>
-    </table>
+        </div>
+        <% if (isManager) { %>
+            <div class="table-actions">
+                <a href="/events/add" class="btn btn-primary">Add Event</a>
+            </div>
+        <% } %>
 
+        <!-- SEARCH BAR -->
+        <form method="GET" action="/events" class="mb-3">
+            <div class="search-bar-wrapper" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <input 
+                    type="text"
+                    name="search"
+                    class="form-control"
+                    placeholder="Search by event name, type, description, or recurrence..."
+                    value="<%= search %>"
+                    style="flex: 1; min-width: 250px; border-radius: 8px; height: 35px; padding: 0 12px;"
+                />
+                <button class="btn btn-secondary" type="submit">Search</button>
+                <button class="btn btn-secondary" type="button" onclick="window.location.href='/events'">Clear</button>
+            </div>
+        </form>
+
+        <table class="event-table table-striped">
+            <thead>
+                <tr>
+                    <th>Event Name</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Default Capacity</th>
+                    <th>Recurrence</th>
+
+                    <!-- Only show Actions column for admins -->
+                    <% if (isManager) { %>
+                        <th>Edit</th>
+                        <th>Delete</th>
+                    <% } %>
+                </tr>
+            </thead>
+
+            <tbody>
+                <% if (events && events.length > 0) { %>
+                    <% events.forEach(event => { %>
+                        <tr>
+                            <td><%= event.eventname %></td>
+                            <td><%= event.eventtype %></td>
+                            <td><%= event.eventdescription %></td>
+                            <td><%= event.eventdefaultcapacity %></td>
+                            <td><%= event.eventrecurrencepattern %></td>
+
+                            <!-- Admin-only actions -->
+                            <% if (isManager) { %>
+                                <td>
+                                    <a href="/events/edit/<%= event.eventid %>" class="btn btn-primary btn-sm">Edit</a>
+                                </td>
+                                <td>
+                                    <form action="/events/delete/<%= event.eventid %>" method="POST" style="display:inline;">
+                                        <button
+                                            type="button"
+                                            class="btn btn-delete"
+                                            data-name="<%= event.eventname %>"
+                                            onclick="openEventDeletePopup(this.form, this.dataset.name)">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </td>
+                            <% } %>
+                        </tr>
+                    <% }) %>
+                <% } else { %>
+                    <tr>
+                        <td colspan="<%= isManager ? 6 : 5 %>" style="text-align:center; padding:20px;">
+                            No events available.
+                        </td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+
+        <div class="table-footer">
+            <div class="footer-left">
+            </div>
+        </div>
+    </div>
+
+    <div class="simple-overlay" id="event-delete-popup">
+        <div class="simple-dialog">
+            <h3>Delete this event?</h3>
+            <p id="event-delete-text">This will also remove all event occurrences, registrations, and surveys.</p>
+            <div class="simple-dialog__actions">
+                <button type="button" class="btn btn-secondary" onclick="closeEventDeletePopup()">Cancel</button>
+                <button type="button" class="btn btn-danger" id="event-confirm-delete">Yes, delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var pendingEventDeleteForm = null;
+        var eventDeletePopup = document.getElementById('event-delete-popup');
+        var eventDeleteText = document.getElementById('event-delete-text');
+        var eventConfirmBtn = document.getElementById('event-confirm-delete');
+
+        function openEventDeletePopup(form, displayName) {
+            pendingEventDeleteForm = form;
+            var name = (displayName || '').trim();
+            if (eventDeleteText) {
+                eventDeleteText.textContent = name
+                    ? 'Delete "' + name + '"? This will also remove all event occurrences, registrations, and surveys.'
+                    : 'This will also remove all event occurrences, registrations, and surveys.';
+            }
+            if (eventDeletePopup) {
+                eventDeletePopup.classList.add('is-visible');
+            }
+        }
+
+        function closeEventDeletePopup() {
+            pendingEventDeleteForm = null;
+            if (eventDeletePopup) {
+                eventDeletePopup.classList.remove('is-visible');
+            }
+        }
+
+        if (eventConfirmBtn) {
+            eventConfirmBtn.addEventListener('click', function() {
+                if (pendingEventDeleteForm) {
+                    pendingEventDeleteForm.submit();
+                }
+                closeEventDeletePopup();
+            });
+        }
+
+        if (eventDeletePopup) {
+            eventDeletePopup.addEventListener('click', function(e) {
+                if (e.target === eventDeletePopup) {
+                    closeEventDeletePopup();
+                }
+            });
+        }
+
+        window.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeEventDeletePopup();
+            }
+        });
+    </script>
 </body>
 </html>

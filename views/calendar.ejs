@@ -1,0 +1,505 @@
+<!-- Group 2-11
+ 
+Calendar page: allows users to view events on a calendar. 
+
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ella Rises - Calendar</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body>
+    <%- include('partials/header') %>
+    <div class="page-wrapper">
+
+            <div class="table-card" style="margin-top:24px;">
+            <div class="table-header">
+                <div>
+                    <h1 style="margin-bottom:4px;">Events Calendar</h1>
+                </div>
+                <button id="toggle-my-events" class="btn btn-secondary" type="button">Show My Events</button>
+            </div>
+
+            <div class="calendar-card">
+                <div class="calendar-header">
+                    <button id="cal-prev" class="cal-nav" type="button" aria-label="Previous month">&#10094;</button>
+                    <div id="calendar-month" class="calendar-month"></div>
+                    <button id="cal-next" class="cal-nav" type="button" aria-label="Next month">&#10095;</button>
+                </div>
+                <div class="calendar-weekdays" id="calendar-weekdays"></div>
+                <div class="calendar-grid" id="calendar-grid"></div>
+                <div id="calendar-empty" class="calendar-empty"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <% const isAdmin = (role || '').toLowerCase() === 'admin'; %>
+
+    <% if (isAdmin) { %>
+    <div id="add-occurrence-modal" class="modal-overlay hidden" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="add-occurrence-title">
+            <button id="add-occurrence-close" class="modal-close" type="button" aria-label="Close">&times;</button>
+            <h3 id="add-occurrence-title">Add Event Occurrence</h3>
+            <p id="add-occurrence-date" class="modal-meta" style="margin-bottom:12px;"></p>
+            <div class="form-row">
+                <label for="template-select">Event Template</label>
+                <select id="template-select">
+                    <option value="">Select a template</option>
+                    <% (eventTemplates || []).forEach(t => { %>
+                        <option value="<%= t.id %>"><%= t.name %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-row">
+                <label for="occurrence-start">Start time</label>
+                <input type="time" id="occurrence-start" value="12:00">
+            </div>
+            <div class="form-row">
+                <label for="occurrence-end">End time</label>
+                <input type="time" id="occurrence-end" value="13:00">
+            </div>
+            <div class="modal-actions">
+                <button id="add-occurrence-save" class="btn btn-primary" type="button">Create</button>
+                <button id="add-occurrence-cancel" class="btn btn-secondary" type="button">Cancel</button>
+            </div>
+            <div id="add-occurrence-error" class="error-message" style="display:none; margin-top:10px;"></div>
+        </div>
+    </div>
+    <% } %>
+
+    <!-- Event detail modal -->
+    <div id="event-modal" class="modal-overlay hidden" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <button id="modal-close" class="modal-close" type="button" aria-label="Close">&times;</button>
+            <h3 id="modal-title"></h3>
+            <p id="modal-datetime" class="modal-meta"></p>
+            <p id="modal-type" class="modal-meta"></p>
+            <p id="modal-capacity" class="modal-meta"></p>
+            <p id="modal-description" class="modal-body"></p>
+            <div class="modal-actions">
+                <a id="modal-register" class="btn btn-primary" href="#">Register</a>
+                <a id="modal-take-survey" class="btn btn-primary" href="#" style="display:none;">Take Survey</a>
+                <a id="modal-surveys" class="btn btn-secondary" href="#">View Surveys</a>
+                <% if (isAdmin) { %>
+                    <button id="modal-delete" class="btn btn-danger" type="button">Delete Event</button>
+                <% } %>
+            </div>
+            <div id="modal-error" class="error-message" style="display:none; margin-top:8px;"></div>
+        </div>
+    </div>
+
+    <div class="simple-overlay" id="calendar-delete-popup">
+        <div class="simple-dialog">
+            <h3>Delete this event?</h3>
+            <p id="calendar-delete-text">Are you sure you want to delete this event?</p>
+            <p class="delete-warning-note">Deleting this occurrence will also delete all associated registrations and surveys.</p>
+            <div class="simple-dialog__actions">
+                <button type="button" class="btn btn-secondary" onclick="closeCalendarDeletePopup()">Cancel</button>
+                <button type="button" class="btn btn-danger" id="calendar-confirm-delete">Yes, delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const events = <%- JSON.stringify(events || []) %>;
+            const registeredEventIds = new Set((<%- JSON.stringify(registeredEventIds || []) %>).map(id => String(id)));
+            const completedSurveyIds = new Set((<%- JSON.stringify(completedSurveyIds || []) %>).map(id => String(id)));
+            const eventTemplates = <%- JSON.stringify(eventTemplates || []) %>;
+            const isAdmin = "<%= (role || '').toLowerCase() === 'admin' %>" === "true";
+            const monthLabel = document.getElementById('calendar-month');
+            const grid = document.getElementById('calendar-grid');
+            const weekdaysRow = document.getElementById('calendar-weekdays');
+            const emptyNote = document.getElementById('calendar-empty');
+            const toggleMineBtn = document.getElementById('toggle-my-events');
+
+            const weekdayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            weekdaysRow.innerHTML = weekdayLabels.map(d => '<div>' + d + '</div>').join('');
+
+            const formatDateKey = (d) => {
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            };
+
+            const buildEventMap = (sourceEvents) => sourceEvents.reduce((acc, evt, idx) => {
+                if (!evt.start) return acc;
+                const d = new Date(evt.start);
+                if (isNaN(d)) return acc;
+                const key = formatDateKey(d); // local date key to avoid TZ shifts
+                acc[key] = acc[key] || [];
+                acc[key].push(idx);
+                return acc;
+            }, {});
+
+            const modal = document.getElementById('event-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalDatetime = document.getElementById('modal-datetime');
+            const modalType = document.getElementById('modal-type');
+            const modalCapacity = document.getElementById('modal-capacity');
+            const modalDescription = document.getElementById('modal-description');
+            const modalClose = document.getElementById('modal-close');
+            const modalRegister = document.getElementById('modal-register');
+            const modalTakeSurvey = document.getElementById('modal-take-survey');
+            const modalSurveys = document.getElementById('modal-surveys');
+            const modalDelete = document.getElementById('modal-delete');
+            const modalError = document.getElementById('modal-error');
+            const calendarDeletePopup = document.getElementById('calendar-delete-popup');
+            const calendarDeleteText = document.getElementById('calendar-delete-text');
+            const calendarDeleteConfirm = document.getElementById('calendar-confirm-delete');
+            const typeColors = {
+                stem: { bg: '#c7e9ff', color: '#0b3d91' },
+                arts: { bg: '#ffe0f1', color: '#7d1b4f' },
+                leadership: { bg: '#e8f3d8', color: '#2e5a1c' },
+                'annual-conference': { bg: '#fff3c2', color: '#5c3a00' }
+            };
+            let activeEvents = events;
+            let eventMap = buildEventMap(activeEvents);
+            let showingMine = false;
+            let currentModalEvent = null;
+            const showOverlay = (overlay) => {
+                overlay.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    overlay.classList.add('is-visible');
+                });
+            };
+
+            const hideOverlay = (overlay) => {
+                overlay.classList.remove('is-visible');
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                }, 200);
+            };
+
+            function formatDateTime(dateStr) {
+                const d = new Date(dateStr);
+                if (isNaN(d)) return 'Date TBD';
+                return d.toLocaleString(undefined, {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                });
+            }
+
+            function openModal(evt) {
+                currentModalEvent = evt;
+                modalTitle.textContent = evt.name || 'Event';
+                modalDatetime.textContent = formatDateTime(evt.start);
+                modalType.textContent = evt.type ? `Type: ${evt.type}` : '';
+                modalCapacity.textContent = evt.capacity ? `Capacity: ${evt.capacity}` : '';
+                modalDescription.textContent = evt.description || 'No description provided.';
+                const isRegisteredForEvent = registeredEventIds.has(String(evt.id));
+                if (isRegisteredForEvent) {
+                    modalRegister.style.display = 'none';
+                } else {
+                    modalRegister.href = `/events/register/${evt.id}`;
+                    modalRegister.style.display = 'inline-block';
+                }
+                const searchTerm = (() => {
+                    const d = new Date(evt.start);
+                    return isNaN(d) ? '' : d.toISOString().slice(0, 10);
+                })();
+                const hasOccurred = !isNaN(new Date(evt.start)) && new Date(evt.start) < new Date();
+                const monthQuery = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-01`;
+                if (hasOccurred) {
+                    modalSurveys.href = `/postsurveys?search=${encodeURIComponent(searchTerm)}`;
+                    modalSurveys.style.display = 'inline-block';
+                    const surveyDone = completedSurveyIds.has(String(evt.id));
+                    if (isRegisteredForEvent && !surveyDone) {
+                        modalTakeSurvey.href = `/surveys/take?eventId=${evt.id}&from=calendar&month=${monthQuery}`;
+                        modalTakeSurvey.style.display = 'inline-block';
+                    } else {
+                        modalTakeSurvey.style.display = 'none';
+                    }
+                } else {
+                    modalSurveys.style.display = 'none';
+                    modalTakeSurvey.style.display = 'none';
+                }
+                modalRegister.href = `/events/register/${evt.id}?month=${monthQuery}&from=calendar`;
+                showOverlay(modal);
+                modal.setAttribute('aria-hidden', 'false');
+                modalError.style.display = 'none';
+            }
+
+            function closeModal() {
+                hideOverlay(modal);
+                modal.setAttribute('aria-hidden', 'true');
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const monthParam = urlParams.get('month');
+            let currentMonth = new Date();
+            if (monthParam) {
+                const parts = monthParam.split('-');
+                if (parts.length >= 2) {
+                    const yr = parseInt(parts[0], 10);
+                    const mo = parseInt(parts[1], 10);
+                    const parsed = new Date(yr, mo - 1, 1);
+                    if (!isNaN(parsed)) currentMonth = parsed;
+                }
+            }
+            currentMonth.setDate(1);
+
+            function renderCalendar() {
+                const year = currentMonth.getFullYear();
+                const month = currentMonth.getMonth();
+
+                monthLabel.textContent = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+                const firstDayIndex = new Date(year, month, 1).getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+                const cells = [];
+                for (let i = 0; i < firstDayIndex; i++) {
+                    cells.push({ empty: true });
+                }
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    cells.push({
+                        day,
+                        events: eventMap[dateStr] || []
+                    });
+                }
+
+                grid.innerHTML = cells.map(cell => {
+                    if (cell.empty) {
+                        return '<div class="calendar-day calendar-day--empty"></div>';
+                    }
+                    const eventsHtml = cell.events.map(idx => {
+                        const evt = activeEvents[idx] || {};
+                        const typeKey = (evt.type || 'default').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                        const typeClass = `event-type-${typeKey}`;
+                        const colors = typeColors[typeKey] || typeColors.default || {};
+                        const inlineStyle = colors.bg ? `style="background:${colors.bg};color:${colors.color || '#111'}"` : '';
+                        return `<button type="button" class="calendar-event ${typeClass}" data-evt-index="${idx}" ${inlineStyle}>${evt.name || 'Event'}</button>`;
+                    }).join('');
+                    return `
+                        <div class="calendar-day ${isAdmin ? 'admin-clickable' : ''}" data-date="${year}-${String(month + 1).padStart(2, '0')}-${String(cell.day).padStart(2, '0')}">
+                            <div class="calendar-day-number">${cell.day}</div>
+                            <div class="calendar-events">${eventsHtml}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                const hasEventsInMonth = cells.some(c => c.events && c.events.length > 0);
+                if (!hasEventsInMonth) {
+                    emptyNote.textContent = showingMine
+                        ? "You haven't registered for any events this month."
+                        : 'No events scheduled this month.';
+                } else {
+                    emptyNote.textContent = '';
+                }
+            }
+
+            document.getElementById('cal-prev').addEventListener('click', () => {
+                currentMonth.setMonth(currentMonth.getMonth() - 1);
+                renderCalendar();
+            });
+            document.getElementById('cal-next').addEventListener('click', () => {
+                currentMonth.setMonth(currentMonth.getMonth() + 1);
+                renderCalendar();
+            });
+
+            grid.addEventListener('click', (e) => {
+                const btn = e.target.closest('.calendar-event');
+                if (btn) {
+                    const idx = parseInt(btn.dataset.evtIndex, 10);
+                    const evt = activeEvents[idx];
+                    if (!evt) return;
+                    openModal(evt);
+                    return;
+                }
+                const day = e.target.closest('.calendar-day');
+                if (!day || !isAdmin) return;
+                const dayDate = day.getAttribute('data-date');
+                openAddModal(dayDate);
+            });
+
+            modalClose.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeModal();
+            });
+
+            const applyMineFilter = () => {
+                if (showingMine) {
+                    activeEvents = events.filter(evt => registeredEventIds.has(String(evt.id)));
+                } else {
+                    activeEvents = events;
+                }
+                eventMap = buildEventMap(activeEvents);
+                renderCalendar();
+            };
+
+            if (toggleMineBtn) {
+                toggleMineBtn.addEventListener('click', () => {
+                    showingMine = !showingMine;
+                    toggleMineBtn.textContent = showingMine ? 'Show All Events' : 'Show My Events';
+                    applyMineFilter();
+                });
+                // If user has no registrations, leave default state; otherwise allow quick switch
+            }
+
+            renderCalendar();
+
+            const deleteEvent = async (evtId) => {
+                try {
+                    const res = await fetch(`/calendar/occurrences/${evtId}`, { method: 'DELETE' });
+                    if (!res.ok) throw new Error('Failed');
+                    const monthParam = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-01`;
+                    const basePath = window.location.pathname || '/calendar';
+                    window.location.href = `${basePath}?month=${encodeURIComponent(monthParam)}`;
+                } catch (err) {
+                    modalError.textContent = "Failed to delete event.";
+                    modalError.style.display = 'block';
+                }
+            };
+
+            window.openCalendarDeletePopup = function() {
+                const titleText = (modalTitle.textContent || '').trim();
+                if (calendarDeleteText) {
+                    calendarDeleteText.textContent = titleText
+                        ? `Delete "${titleText}"?`
+                        : 'Delete this event?';
+                }
+                if (calendarDeletePopup) {
+                    calendarDeletePopup.classList.add('is-visible');
+                }
+            };
+
+            window.closeCalendarDeletePopup = function() {
+                if (calendarDeletePopup) {
+                    calendarDeletePopup.classList.remove('is-visible');
+                }
+            };
+
+            if (modalDelete) {
+                modalDelete.addEventListener('click', () => {
+                    openCalendarDeletePopup();
+                });
+            }
+
+            if (calendarDeleteConfirm) {
+                calendarDeleteConfirm.addEventListener('click', () => {
+                    const currentId = currentModalEvent && currentModalEvent.id
+                        ? currentModalEvent.id
+                        : modalRegister.href.split('/').pop();
+                    deleteEvent(currentId);
+                    closeCalendarDeletePopup();
+                });
+            }
+
+            if (calendarDeletePopup) {
+                calendarDeletePopup.addEventListener('click', (e) => {
+                    if (e.target === calendarDeletePopup) closeCalendarDeletePopup();
+                });
+            }
+
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeCalendarDeletePopup();
+            });
+
+            // Fun pulse when registering
+            modalRegister?.addEventListener('click', () => {
+                modalRegister.classList.remove('btn-pulse');
+                void modalRegister.offsetWidth; // force reflow
+                modalRegister.classList.add('btn-pulse');
+            });
+            modalTakeSurvey?.addEventListener('click', () => {
+                modalTakeSurvey.classList.remove('btn-pulse');
+                void modalTakeSurvey.offsetWidth;
+                modalTakeSurvey.classList.add('btn-pulse');
+            });
+
+            // Admin add occurrence modal handling
+            if (isAdmin) {
+                const addModal = document.getElementById('add-occurrence-modal');
+                const addDate = document.getElementById('add-occurrence-date');
+                const addClose = document.getElementById('add-occurrence-close');
+                const addCancel = document.getElementById('add-occurrence-cancel');
+                const addSave = document.getElementById('add-occurrence-save');
+                const templateSelect = document.getElementById('template-select');
+                const addError = document.getElementById('add-occurrence-error');
+                const startInput = document.getElementById('occurrence-start');
+                const endInput = document.getElementById('occurrence-end');
+
+                const closeAddModal = () => {
+                    hideOverlay(addModal);
+                    addModal.setAttribute('aria-hidden', 'true');
+                    addError.style.display = 'none';
+                    templateSelect.value = "";
+                };
+
+                window.openAddModal = (dateStr) => {
+                    addDate.textContent = `Selected date: ${dateStr}`;
+                    showOverlay(addModal);
+                    addModal.setAttribute('aria-hidden', 'false');
+                };
+
+                const createOccurrence = async () => {
+                    const templateId = templateSelect.value;
+                    const startTime = (startInput?.value || '').trim();
+                    const endTime = (endInput?.value || '').trim();
+                    if (!templateId) {
+                        addError.textContent = "Please select a template.";
+                        addError.style.display = 'block';
+                        return;
+                    }
+                    if (!startTime || !endTime) {
+                        addError.textContent = "Start and end times are required.";
+                        addError.style.display = 'block';
+                        return;
+                    }
+                    const selectedDate = addDate.textContent.replace('Selected date: ', '').trim();
+                    const startDate = new Date(`${selectedDate}T${startTime}`);
+                    const endDate = new Date(`${selectedDate}T${endTime}`);
+                    if (isNaN(startDate) || isNaN(endDate) || endDate <= startDate) {
+                        addError.textContent = "Please choose valid start and end times (end after start).";
+                        addError.style.display = 'block';
+                        return;
+                    }
+                    const params = new URLSearchParams();
+                    params.append('date', selectedDate);
+                    params.append('templateId', templateId);
+                    params.append('startTime', startTime);
+                    params.append('endTime', endTime);
+                    try {
+                        const res = await fetch('/calendar/occurrences', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: params.toString()
+                        });
+                        if (!res.ok) {
+                            throw new Error('Request failed');
+                        }
+                        window.location.reload();
+                    } catch (err) {
+                        addError.textContent = "Failed to create event. Try again.";
+                        addError.style.display = 'block';
+                    }
+                };
+
+                addSave?.addEventListener('click', createOccurrence);
+                addClose?.addEventListener('click', closeAddModal);
+                addCancel?.addEventListener('click', closeAddModal);
+                addModal?.addEventListener('click', (e) => {
+                    if (e.target === addModal) closeAddModal();
+                });
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && !addModal.classList.contains('hidden')) {
+                        closeAddModal();
+                    }
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

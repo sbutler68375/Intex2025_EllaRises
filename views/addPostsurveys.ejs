@@ -1,12 +1,22 @@
+<!-- Group 2-11
+ 
+Add Post Survey page: Allows admin/managers to see survey results for an event
+and participant. 
+
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Add Survey</title>
+    <link rel="stylesheet" href="/vendor/choices/choices.min.css">
     <link rel="stylesheet" href="/styles.css">
 </head>
 
 <body>
+
+    <%- include('partials/header') %>
 
     <div class="form-card">
         <h2>Add Post-Event Survey</h2>
@@ -15,12 +25,6 @@
             <div class="error-message"><%= error_message %></div>
         <% } %>
 
-        <!-- 
-            EXPECTED DATA PASSED IN:
-            events = [ { eventid, eventname, eventdatetimestart }, ... ]
-            participants = [ { participantid, participantname }, ... ]
-        -->
-
         <form action="/postsurveys/add" method="POST">
 
             <!-- Select Event -->
@@ -28,9 +32,9 @@
                 <label for="eventid">Event</label>
                 <select id="eventid" name="eventid" required>
                     <option value="">-- Select an Event --</option>
-                    <% events.forEach(event => { %>
+                    <% (events || []).forEach(event => { %>
                         <option value="<%= event.eventid %>">
-                            <%= event.eventname %> — <%= event.eventdatetimestart %>
+                            <%= event.eventname %> - <%= event.eventdatetimestart %>
                         </option>
                     <% }); %>
                 </select>
@@ -41,7 +45,7 @@
                 <label for="participantid">Participant</label>
                 <select id="participantid" name="participantid" required>
                     <option value="">-- Select a Participant --</option>
-                    <% participants.forEach(part => { %>
+                    <% (participants || []).forEach(part => { %>
                         <option value="<%= part.participantid %>">
                             <%= part.participantname %>
                         </option>
@@ -49,13 +53,57 @@
                 </select>
             </div>
 
-            <!-- Rating -->
+            <!-- Scores -->
             <div class="form-row">
-                <label for="rating">Rating (1–5)</label>
+                <label for="satisfaction_score">Satisfaction Score (1-5)</label>
                 <input 
                     type="number" 
-                    id="rating" 
-                    name="rating" 
+                    id="satisfaction_score" 
+                    name="satisfaction_score" 
+                    min="1" max="5"
+                    required
+                >
+            </div>
+
+            <div class="form-row">
+                <label for="usefulness_score">Usefulness Score (1-5)</label>
+                <input 
+                    type="number" 
+                    id="usefulness_score" 
+                    name="usefulness_score" 
+                    min="1" max="5"
+                    required
+                >
+            </div>
+
+            <div class="form-row">
+                <label for="instructor_score">Instructor Score (1-5)</label>
+                <input 
+                    type="number" 
+                    id="instructor_score" 
+                    name="instructor_score" 
+                    min="1" max="5"
+                    required
+                >
+            </div>
+
+            <div class="form-row">
+                <label for="recommendation_score">Recommendation Score (1-5)</label>
+                <input 
+                    type="number" 
+                    id="recommendation_score" 
+                    name="recommendation_score" 
+                    min="1" max="5"
+                    required
+                >
+            </div>
+
+            <div class="form-row">
+                <label for="overall_score">Overall Score (1-5)</label>
+                <input 
+                    type="number" 
+                    id="overall_score" 
+                    name="overall_score" 
                     min="1" max="5"
                     required
                 >
@@ -81,6 +129,30 @@
             </div>
 
         </form>
+        <script src="/vendor/choices/choices.min.js"></script>
+        <script>
+            (function() {
+                const participantSelect = document.getElementById("participantid");
+                if (participantSelect) {
+                    new Choices(participantSelect, {
+                        searchPlaceholder: "Type to search participants",
+                        shouldSort: true,
+                        searchResultLimit: 50,
+                        allowHTML: false
+                    });
+                }
+
+                const eventSelect = document.getElementById("eventid");
+                if (eventSelect) {
+                    new Choices(eventSelect, {
+                        searchPlaceholder: "Type to search events",
+                        shouldSort: true,
+                        searchResultLimit: 50,
+                        allowHTML: false
+                    });
+                }
+            })();
+        </script>
     </div>
 
 </body>

@@ -7,7 +7,11 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install-deps": "nmp install",
+    "setup": "npm install",
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "repository": {
     "type": "git",
@@ -26,8 +30,12 @@
     "env": "^0.0.2",
     "express": "^5.2.0",
     "express-session": "^1.18.2",
+    "helmet": "^8.1.0",
     "knex": "^3.1.0",
     "multer": "^2.0.2",
     "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
   }
 }

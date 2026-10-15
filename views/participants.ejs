@@ -1,124 +1,223 @@
+<!-- Group 2-11
+ 
+Participants page: This page shows a list of all the participants and their
+information (name, DOB, phone, city, etc). Admin/Managers can edit and delete.
+
+-->
+
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Participants List</title>
-    <link rel="stylesheet" href="/styles.css">
-</head>
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Participants List</title>
+        <link rel="stylesheet" href="/styles.css">
+    </head>
 
-<body>
-    <div class="container mt-5">
+    <body>
+        <%- include('partials/header') %>
+        <div class="container mt-5">
 
-        <h1 class="mb-4">Participants List</h1>
+            <div class="table-header-row">
+                <h1 class="mb-4">Participants List</h1>
+                <% if (pagination && pagination.totalPages > 1) { %>
+                    <% const searchQS = search ? '&search=' + encodeURIComponent(search) : ''; %>
+                    <div class="pagination-top">
+                        <div class="pagination">
+                            <a class="page-link <%= pagination.page === 1 ? 'disabled' : '' %>"
+                               href="?page=<%= pagination.page - 1 %><%= searchQS %>">Previous</a>
+                            <span class="page-info">Page <%= pagination.page %> of <%= pagination.totalPages %></span>
+                            <a class="page-link <%= pagination.page >= pagination.totalPages ? 'disabled' : '' %>"
+                               href="?page=<%= pagination.page + 1 %><%= searchQS %>">Next</a>
+                        </div>
+                    </div>
+                <% } %>
+            </div>
 
-        <!-- ADMIN / MANAGER CAN ADD PARTICIPANTS -->
-        <% if (role === "admin") { %>
-            <form action="/addParticipants" method="GET" class="mb-3">
-                <button class="btn btn-success" type="submit">Add Participant</button>
+            <!-- ADMINS SEE ADD BUTTON -->
+            <% if (role === "admin") { %>
+                <form action="/addParticipants" method="GET" class="add-button-bar">
+                    <button class="btn btn-primary" type="submit">Add Participant</button>
+                </form>
+            <% } %>
+
+            <!-- SEARCH BAR -->
+            <form method="GET" action="/participants" class="mb-3">
+                <div class="search-bar-wrapper" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                    <input 
+                        type="text"
+                        name="search"
+                        class="form-control"
+                        placeholder="Search by name, email, city, state, school, or DOB..."
+                        value="<%= search %>"
+                        style="flex: 1; min-width: 250px; border-radius: 8px; height: 35px; padding: 0 12px;"
+                    />
+                    <button class="btn btn-secondary" type="submit">Search</button>
+                    <button class="btn btn-secondary" type="button" onclick="window.location.href='/participants'">Clear</button>
+                </div>
             </form>
-        <% } %>
 
-        <!-- ERROR MESSAGE -->
-        <% if (error_message) { %>
-            <div class="alert alert-danger">
-                <%= error_message %>
-            </div>
-        <% } %>
 
-        <!-- SEARCH BAR -->
-        <form method="GET" action="/participants" class="mb-4">
-            <div class="input-group">
-                <input 
-                    type="text"
-                    name="search"
-                    class="form-control"
-                    placeholder="Search by name, email, city, etc..."
-                    value="<%= search %>"
-                />
-                <button class="btn btn-primary" type="submit">Search</button>
-                <a href="/participants" class="btn btn-secondary">Clear</a>
-            </div>
-        </form>
+            <!-- ERROR MESSAGE -->
+            <% if (error_message) { %>
+                <div class="alert alert-danger">
+                    <%= error_message %>
+                </div>
+            <% } %>
 
-        <% if (participants.length === 0) { %>
-            <div class="alert alert-warning">
-                No participants found in the database.
-            </div>
-        <% } else { %>
+            <!-- NO PARTICIPANTS -->
+            <% if (participants.length === 0) { %>
+                <div class="alert alert-warning">
+                    No participants found in the database.
+                </div>
+            <% } else { %>
 
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Email</th>
-                        <th>First Name</th>
-                        <th>Last Name</th>
-                        <th>Date of Birth</th>
-                        <th>Phone</th>
-                        <th>City</th>
-                        <th>State</th>
-                        <th>Zip</th>
-                        <th>School or Employer</th>
-                        <th>Field of Interest</th>
-
-                        <% if (role === "admin") { %>
-                            <th>Edit</th>
-                            <th>Delete</th>
-                        <% } %>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    <% participants.forEach(p => { %>
+                <table class="table table-striped">
+                    <thead>
                         <tr>
-                            <td><%= p.participant_email || "Unknown" %></td>
-                            <td><%= p.participant_first_name || "Unknown" %></td>
-                            <td><%= p.participant_last_name || "Unknown" %></td>
-
-                            <!-- Format DOB -->
-                            <td>
-                                <% if (!p.participant_dob) { %>
-                                    Unknown Date
-                                <% } else { %>
-                                    <%= new Date(p.participant_dob).toLocaleDateString("en-US", {
-                                        year: "numeric",
-                                        month: "long",
-                                        day: "numeric"
-                                    }) %>
-                                <% } %>
-                            </td>
-
-                            <td><%= p.participant_phone || "Unknown" %></td>
-                            <td><%= p.participant_city || "Unknown" %></td>
-                            <td><%= p.participant_state || "Unknown" %></td>
-                            <td><%= p.participant_zip || "Unknown" %></td>
-                            <td><%= p.participant_school_or_employer || "Unknown" %></td>
-                            <td><%= p.participant_field_of_interest || "Unknown" %></td>
-
+                            <th>First Name</th>
+                            <th>Last Name</th>
+                            <th>DOB</th>
+                            <th>Phone</th>
+                            <th>City</th>
+                            <th>State</th>
+                            <th>Zip</th>
+                            <th>School or Employer</th>
+                            <th>Field of Interest</th>
+                            <th>View</th>
+                            
+                            <!-- Admin-only columns -->
                             <% if (role === "admin") { %>
-                                <td>
-                                    <form action="/editParticipants/<%= p.participant_id %>" method="GET">
-                                        <button class="btn btn-primary btn-sm">Edit</button>
-                                    </form>
-                                </td>
-
-                                <td>
-                                    <form action="/deleteParticipants/<%= p.participant_id %>" method="POST">
-                                        <button class="btn btn-danger btn-sm">Delete</button>
-                                    </form>
-                                </td>
+                                <th>Edit</th>
+                                <th>Delete</th>
                             <% } %>
+
                         </tr>
-                    <% }) %>
-                </tbody>
-            </table>
+                    </thead>
 
-        <% } %>
+                    <tbody>
+                        <% participants.forEach(participant => { %>
+                            <tr>
+                                <td><%= participant.participant_first_name %></td>
+                                <td><%= participant.participant_last_name %></td>
+                                <td>
+                                    <%= participant.participant_dob ? new Date(participant.participant_dob).toISOString().split('T')[0] : '' %>
+                                </td>
+                                <td><%= participant.participant_phone %></td>
+                                <td><%= participant.participant_city %></td>
+                                <td><%= participant.participant_state %></td>
+                                <td><%= participant.participant_zip %></td>
+                                <td><%= participant.participant_school_or_employer %></td>
+                                <td><%= participant.participant_field_of_interest %></td>
+                                <td>
+                                    <form action="/viewParticipants/<%= participant.participant_id %>" method="GET">
+                                        <button class="btn btn-secondary btn-sm">View</button>
+                                    </form>
+                                </td>
 
-        <a href="/" class="btn btn-primary mt-3">Back to Dashboard</a>
-        <a href="/logout" class="btn btn-secondary mt-3">Logout</a>
+                                <!-- EDIT: Admins only -->
+                                <% if (role === "admin") { %>
+                                    <td>
+                                        <form action="/editParticipants/<%= participant.participant_id %>" method="GET">
+                                            <button class="btn btn-primary btn-sm">Edit</button>
+                                        </form>
+                                    </td>
 
-    </div>
-</body>
+                                    <!-- DELETE: Admins only -->
+                                    <td>
+                                        <form action="/deleteParticipants/<%= participant.participant_id %>" method="POST">
+                                            <button 
+                                                type="button" 
+                                                class="btn btn-danger btn-sm"
+                                                data-name="<%= participant.participant_first_name + ' ' + participant.participant_last_name %>"
+                                                onclick="openDeletePopup(this.form, this.dataset.name)">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                <% } %>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            <% } %>
+
+            <div class="table-footer">
+                <div class="footer-left">
+                    <% if (pagination && pagination.totalPages > 1) { %>
+                        <% const searchQS = search ? '&search=' + encodeURIComponent(search) : ''; %>
+                        <div class="pagination">
+                            <a class="page-link <%= pagination.page === 1 ? 'disabled' : '' %>"
+                               href="?page=<%= pagination.page - 1 %><%= searchQS %>">Previous</a>
+                            <span class="page-info">Page <%= pagination.page %> of <%= pagination.totalPages %></span>
+                            <a class="page-link <%= pagination.page >= pagination.totalPages ? 'disabled' : '' %>"
+                               href="?page=<%= pagination.page + 1 %><%= searchQS %>">Next</a>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <div class="simple-overlay" id="delete-popup">
+            <div class="simple-dialog">
+                <h3>Delete this participant?</h3>
+                <p id="delete-popup-text">This will also remove all associated milestones, registrations, and surveys.</p>
+                <div class="simple-dialog__actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeDeletePopup()">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-btn">Yes, delete</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            var pendingDeleteForm = null;
+            var deletePopup = document.getElementById('delete-popup');
+            var deletePopupText = document.getElementById('delete-popup-text');
+            var confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+
+            function openDeletePopup(form, displayName) {
+                pendingDeleteForm = form;
+                var name = (displayName || '').trim();
+                if (deletePopupText) {
+                    deletePopupText.textContent = name
+                        ? 'Delete ' + name + '? This will also remove all associated milestones, registrations, and surveys.'
+                        : 'This will also remove all associated milestones, registrations, and surveys.';
+                }
+                if (deletePopup) {
+                    deletePopup.classList.add('is-visible');
+                }
+            }
+
+            function closeDeletePopup() {
+                pendingDeleteForm = null;
+                if (deletePopup) {
+                    deletePopup.classList.remove('is-visible');
+                }
+            }
+
+            if (confirmDeleteBtn) {
+                confirmDeleteBtn.addEventListener('click', function() {
+                    if (pendingDeleteForm) {
+                        pendingDeleteForm.submit();
+                    }
+                    closeDeletePopup();
+                });
+            }
+
+            if (deletePopup) {
+                deletePopup.addEventListener('click', function(e) {
+                    if (e.target === deletePopup) {
+                        closeDeletePopup();
+                    }
+                });
+            }
+
+            window.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeDeletePopup();
+                }
+            });
+        </script>
+    </body>
 </html>

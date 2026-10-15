@@ -1,0 +1,55 @@
+<!-- Group 2-11
+ 
+Register Event page: This is page allows participants to register for events.
+
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register for Event</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <%- include('partials/header') %>
+
+    <!-- Event info listed -->
+    <div class="form-card" style="max-width:640px;">
+        <h2>Register for <%= event ? event.name : 'Event' %></h2>
+        <% if (event && event.start) { %>
+            <p style="margin-top:6px; color:#4c4f4d;">
+                <strong>When:</strong>
+                <%= new Date(event.start).toLocaleString(undefined, { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) %>
+            </p>
+        <% } %>
+        <% if (event && event.type) { %>
+            <p style="color:#4c4f4d;"><strong>Type:</strong> <%= event.type %></p>
+        <% } %>
+        <% if (event && event.capacity) { %>
+            <p style="color:#4c4f4d;"><strong>Capacity:</strong> <%= event.capacity %></p>
+        <% } %>
+        <% if (event && event.description) { %>
+            <p style="margin-top:8px;"><%= event.description %></p>
+        <% } %>
+
+        <% if (error_message) { %>
+            <div class="error-message"><%= error_message %></div>
+        <% } %>
+        <% if (success_message) { %>
+            <div class="alert alert-info"><%= success_message %></div>
+        <% } %>
+
+        <form action="/events/register/<%= event ? event.id : '' %>" method="POST">
+            <input type="hidden" name="month" value="<%= month || '' %>">
+            <input type="hidden" name="from" value="<%= from || '' %>">
+            <input type="hidden" name="anchor" value="<%= anchor || '' %>">
+            <div class="form-row" style="margin-top:16px; display:flex; gap:10px; align-items:center;">
+                <button type="submit" class="btn btn-primary">Register</button>
+                <a href="<%= backLink || '/calendar' %>" class="btn btn-secondary">Back</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

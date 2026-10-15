@@ -1,0 +1,102 @@
+<!-- Group 2-11
+ 
+Header page: This is a header that appears at the top of all the pages. It has buttons
+to go to different pages in the website.
+
+-->
+
+<header class="site-header">
+    <div class="site-header__inner">
+        <button class="menu-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="site-sidebar">
+            <span class="menu-toggle__bar"></span>
+            <span class="menu-toggle__bar"></span>
+            <span class="menu-toggle__bar"></span>
+        </button>
+        <a href="/" class="site-brand">
+            <img src="/ella-rises-logo.png" alt="Ella Rises logo" class="site-logo">
+            <span>Ella Rises</span>
+        </a>
+        <div class="header-actions">
+            <% if (isLoggedIn) { %>
+                <a class="nav-accent" href="/logout">Logout</a>
+            <% } else { %>
+                <a href="/login">Login</a>
+                <a class="nav-accent" href="/register">Register</a>
+            <% } %>
+        </div>
+    </div>
+</header>
+
+<div class="site-sidebar-backdrop" data-sidebar-close></div>
+<aside class="site-sidebar" id="site-sidebar" aria-hidden="true">
+    <div class="site-sidebar__header">
+        <span class="sidebar-label">Navigation</span>
+        <button class="menu-close" type="button" aria-label="Close navigation">&times;</button>
+    </div>
+    <nav class="site-nav">
+        <% if (isLoggedIn) { %>
+            <a href="/homepage">Home</a>
+            <a href="/dashboard">Dashboard</a>
+        <% } %>
+        <a href="/donations">Donations</a>
+        <% if (isLoggedIn) { %>
+            <a href="/events">Events</a>
+            <a href="/calendar">Calendar</a>
+            <a href="/participants">Participants</a>
+            <a href="/postsurveys">Surveys</a>
+            <a href="/milestones">Milestones</a>
+            <% if ((currentRole || '').toLowerCase() === 'admin') { %>
+                <a href="/users">Users</a>
+            <% } %>
+        <% } %>
+    </nav>
+</aside>
+
+<script>
+    (function() {
+        // Ensure favicon uses Ella Rises logo across all pages
+        try {
+            var existing = document.querySelector("link[rel*='icon']");
+            var link = existing || document.createElement("link");
+            link.rel = "icon";
+            link.type = "image/png";
+            link.href = "/ella-rises-logo.png";
+            if (!existing) document.head.appendChild(link);
+        } catch (e) {
+            console.error("Favicon setup failed", e);
+        }
+
+        var sidebar = document.getElementById('site-sidebar');
+        var toggleBtn = document.querySelector('.menu-toggle');
+        var closeBtn = document.querySelector('.menu-close');
+        var backdrop = document.querySelector('.site-sidebar-backdrop');
+
+        if (!sidebar || !toggleBtn) return;
+
+        function setOpen(open) {
+            sidebar.classList.toggle('is-open', open);
+            document.body.classList.toggle('sidebar-open', open);
+            if (backdrop) backdrop.classList.toggle('is-visible', open);
+            toggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            sidebar.setAttribute('aria-hidden', open ? 'false' : 'true');
+        }
+
+        function closeSidebar() {
+            setOpen(false);
+        }
+
+        toggleBtn.addEventListener('click', function() {
+            var isOpen = sidebar.classList.contains('is-open');
+            setOpen(!isOpen);
+        });
+
+        if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+        if (backdrop) backdrop.addEventListener('click', closeSidebar);
+
+        document.addEventListener('keydown', function(evt) {
+            if (evt.key === 'Escape' && sidebar.classList.contains('is-open')) {
+                closeSidebar();
+            }
+        });
+    })();
+</script>

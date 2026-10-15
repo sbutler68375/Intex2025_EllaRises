@@ -1,51 +1,75 @@
+<!-- Group 2-11
+ 
+Edit Donation page: allows admin/managers to edit information (date, amount, participant)
+about a donation.
+
+-->
+
 <!DOCTYPE html>
 <html>
-    <head>
+<head>
         <title>Edit Donation</title>
+        <link rel="stylesheet" href="/vendor/choices/choices.min.css">
         <link rel="stylesheet" href="/styles.css">
     </head>
-    <body>
-        <h1>Edit Donation</h1>
+<body>
+        <%- include('partials/header') %>
+        <div class="form-card">
+            <h2>Edit Donation</h2>
 
-        <% if (typeof error_message !== 'undefined' && error_message) { %>
-            <p style="color:red;"><%= error_message %></p>
-        <% } %>
-
-        <form action="/editDonations/<%= donation.id %>" method="post" enctype="multipart/form-data">
-            <label for="username">donation Name: </label>
-            <input type="text" id="username" name="username" value="<%= donation.username %>" required>
-            <br><br>
-
-            <label for="password">Password: </label>
-            <input type="text" id="password" name="password" value="<%= donation.password %>" required>
-            <br><br>
-
-            <% if (donation.profile_image) { %>
-                <p>Current Picture:</p>
-                <img src="<%= donation.profile_image %>" alt="Current profile picture" style="max-width:150px; height:auto;">
-                <br><br>
+            <% if (typeof error_message !== 'undefined' && error_message) { %>
+                <div class="error-message"><%= error_message %></div>
             <% } %>
 
-            <label for="profileImage">Upload New Picture (optional): </label>
-            <input type="file" id="profileImage" name="profileImage" accept="image/*">
-            <br><br>
+            <form action="/editDonations/<%= donation.donation_id %>" method="post">
+                <% 
+                    let donationDateVal = "";
+                    if (donation.donation_date) {
+                        const d = new Date(donation.donation_date);
+                        if (!isNaN(d)) donationDateVal = d.toISOString().slice(0,10);
+                    }
+                %>
+                <div class="form-row">
+                    <label for="donation_date">Donation Date</label>
+                    <input type="date" id="donation_date" name="donation_date" value="<%= donationDateVal %>">
+                </div>
 
-            <input type="hidden" name="existingImage" value="<%= donation.profile_image %>">
+                <div class="form-row">
+                    <label for="donation_amount">Donation Amount</label>
+                    <input type="number" step="0.01" id="donation_amount" name="donation_amount" value="<%= donation.donation_amount %>" required>
+                </div>
 
-            <input type="submit" value="Update User">
-        </form>
+                <div class="form-row">
+                    <label for="participant_id">Participant</label>
+                    <select id="participant_id" name="participant_id" required>
+                        <% participants.forEach(p => { %>
+                            <option value="<%= p.participant_id %>" <%= p.participant_id === donation.participant_id ? 'selected' : '' %>>
+                                <%= p.participant_first_name %> <%= p.participant_last_name %>
+                            </option>
+                        <% }) %>
+                    </select>
+                </div>
 
-        <br>
-        <a href="/donations">Back to Donations</a>
-        <script>
-            // Set focus to the first input field when page loads
-            window.addEventListener('DOMContentLoaded', function() {
-                const firstInput = document.querySelector('input[type="text"]');
-                if (firstInput) {
-                    firstInput.focus();
-                }
-            });
-        </script>
+                <div class="buttons">
+                    <button type="submit" class="btn btn-save">Update Donation</button>
+                    <a href="/donations" class="btn btn-cancel">Cancel</a>
+                </div>
+            </form>
+            <script src="/vendor/choices/choices.min.js"></script>
+            <script>
+                (function() {
+                    const select = document.getElementById("participant_id");
+                    if (select) {
+                        new Choices(select, {
+                            searchPlaceholder: "Type to search participants",
+                            shouldSort: true,
+                            searchResultLimit: 50,
+                            allowHTML: false
+                        });
+                    }
+                })();
+            </script>
+        </div>
     </body>
 </html>
 

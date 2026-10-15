@@ -1,3 +1,10 @@
+<!-- Group 2-11
+ 
+First Page: This is the main page that users see when they first come to the website. They can login
+and view donations. 
+
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,49 +16,78 @@
 
 <body>
 
+    <%- include('partials/header') %>
+
     <div class="page-wrapper">
 
-        <h1 style="text-align:center; margin-top:40px;">Welcome to Ella Rises</h1>
+        <h1 class="landing-title">Welcome to</h1>
+        <div class="hero-row">
+            <img src="/ballet_folklorico_dancer.png" alt="Ballet Folklorico Dancer" class="hero-circle">
+            <img src="/art_student.jpg" alt="Art Student" class="hero-circle">
+            <img src="/ella-rises-logo.png" alt="Ella Rises Logo" class="hero-circle">
+            <img src="/mariachi_band.avif" alt="Mariachi Band" class="hero-circle">
+            <img src="/stem_students.jpg" alt="STEM Students" class="hero-circle">
+        </div>
 
-        <div style="
-            display:flex;
-            flex-direction:column;
-            gap:20px;
-            align-items:center;
-            margin-top:30px;
-        ">
+        <div class="landing-actions">
 
-                    <!-- Objective / Mission Statement -->
-        <section style="
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
-            text-align: center;
-            line-height: 1.6;
-        ">
-            <h2>Our Objective</h2>
+            <!-- Objective / Mission Statement -->
+            <section class="mission-card">
+                <h2>Our Objective</h2>
 
-            <p>
-                Ella Rises empowers young women to pursue higher education and embrace their heritage 
-                through mentoring, creative workshops, leadership opportunities, and STEAM programs in 
-                partnership with UVU and BYU.
-            </p>
+                <p class="fade-up">
+                    Ella Rises empowers young women to pursue higher education and
+                    embrace their heritage through a transformative journey of culturally
+                    rooted STEM and Arts "STEAM" programs. Serving 150 students
+                    annually, ages 11–18. We remove critical financial and logistical barriers
+                    for first-generation, low-income families and bridge a gap that limits
+                    higher education attainment.
+                </p><br>
 
-            <p>
-                We measure program impact using post-event surveys and milestone tracking, providing valuable 
-                insights for donors, sponsors, and program leaders while identifying the most effective 
-                activities for long-term success.
-            </p>
+                <p class="fade-up" style="animation-delay: 0.12s;">
+                    Our curriculum fosters greater self-confidence, identity, and purpose
+                    through weekly performing arts instruction, elite STEAM, leadership
+                    events, and university tours. We believe that broadening a young
+                    woman’s vision of what is possible empowers her to rise as a
+                    transformative leader.
+                </p>
+                
+            </section>
+
+            <div class="donation-simple fade-up">
+                <p class="donation-simple__text">Your generosity fuels opportunities for more than 1,000 girls.</p>
+                <% if (role && role.toLowerCase() === 'admin') { %>
+                    <a href="/donations" class="btn btn-primary btn-lift btn-pulse">Donate to Ella Rises</a>
+                <% } else { %>
+                    <div class="donation-actions">
+                        <% if (role) { %>
+                            <a href="/donate" class="btn btn-primary btn-lift btn-pulse">Donate (Use My Account)</a>
+                        <% } else { %>
+                            <a href="/login?next=/donate" class="btn btn-primary btn-lift btn-pulse">Login to Donate</a>
+                        <% } %>
+                        <a href="/donate/guest" class="btn btn-secondary btn-lift">Donate Anonymously</a>
+                    </div>
+                <% } %>
+            </div>
             
-        </section>
-            <!-- Donations button (public) -->
-            <a href="/donations" class="btn btn-primary">Go to Donations</a>
-
-            <!-- Login button -->
-            <a href="/login" class="btn btn-secondary">Login</a>
-
         </div>
     </div>
+
+    <script>
+        (() => {
+            const heroImages = Array.from(document.querySelectorAll('.hero-circle'));
+            if (!heroImages.length) return;
+            heroImages.forEach(img => {
+                img.addEventListener('click', () => {
+                    const isActive = img.classList.contains('is-active');
+                    heroImages.forEach(i => i.classList.remove('is-active'));
+                    if (!isActive) {
+                        img.classList.add('is-active');
+                    }
+                });
+            });
+        })();
+    </script>
 
 </body>
 </html>
