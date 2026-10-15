@@ -1,14 +1,9 @@
-# intexFall2025
-INTEX Fall 2025 Group 2-11
+# Ella Rises
 
-ejs Files
-- Home page
-- Login Page
+BYU INTEX Fall 2025 group project (Group 2-11).
 
-- - Pages below need View/Add/Edit/Delete Button
-- Donation Page
-- User Mainenance
-- Participants
-- events
-- post surveys
-- milestones
+## Team
+
+- [Mike-31415](https://github.com/Mike-31415)
+- [owenck](https://github.com/owenck)
+- [sbutler68375](https://github.com/sbutler68375)
